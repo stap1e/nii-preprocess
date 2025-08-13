@@ -189,40 +189,26 @@ def organ_data_module(task_dir, dataset = 'flare2024', phase = 'phase_1', batch_
         if cache:
             train_ds = CacheDataset(
                 data=train_files,
-                transform=train_transforms,
-                cache_num=len(train_files),
-                cache_rate=1.0,
-                num_workers=8,
-                copy_cache=False
-            )
+                transform=train_transforms, cache_num=len(train_files),
+                cache_rate=1.0, num_workers=8, copy_cache=False)
 
             # disable multi-workers because `ThreadDataLoader` works with multi-threads
             train_loader = DataLoader(train_ds, num_workers=6, batch_size=batch_size, shuffle=True, drop_last=True)
-            val_ds = CacheDataset(
-                data=val_files, transform=val_transforms, cache_num=len(val_files), cache_rate=1.0, num_workers=0,copy_cache=False
-            )
-            val_loader = DataLoader(val_ds, num_workers=0, batch_size=1,shuffle=False,)
+            val_ds       = CacheDataset(data=val_files, transform=val_transforms, cache_num=len(val_files), cache_rate=1.0, num_workers=0,copy_cache=False)
+            val_loader   = DataLoader(val_ds, num_workers=0, batch_size=1,shuffle=False,)
 
         else:
             train_ds = Dataset(
                 data=train_files,
-                transform=train_transforms,   
-            )
+                transform=train_transforms,)
             
-            train_loader =    DataLoader(train_ds, num_workers=0, batch_size=batch_size, shuffle=True, pin_memory=True, drop_last=True) 
-            val_ds = Dataset(
-                data=val_files, transform=val_transforms
-            )
-            val_loader = DataLoader(val_ds, num_workers=0, batch_size=1,pin_memory=True)
+            train_loader = DataLoader(train_ds, num_workers=0, batch_size=batch_size, shuffle=True, pin_memory=True, drop_last=True) 
+            val_ds       = Dataset(data=val_files, transform=val_transforms)
+            val_loader   = DataLoader(val_ds, num_workers=0, batch_size=1,pin_memory=True)
             
             # self.transform = Compose(transform)
             # self.transform(self.data[index])
-
-            # for i in  val_ds:
-            #      print(i["image"].meta["filename_or_obj"])
         return train_ds,train_loader,val_ds,val_loader 
-        #return train_ds,val_ds 
-
 
 ########################################################################
 ############################## validation ##############################
