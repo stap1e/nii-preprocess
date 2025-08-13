@@ -146,7 +146,6 @@ def organ_data_module(task_dir, dataset = 'flare2024', phase = 'phase_1', batch_
                         prob=0.1, spatial_size=  sample_patch,
                         rotate_range=(0, 0, np.pi / 15),
                         scale_range=(0.1, 0.1, 0.1)),
-
                     ToTensord(keys=["image", "label"]),])
             
             val_transforms = Compose([
@@ -244,8 +243,7 @@ stage2_tolabel = Compose([
         # SaveImaged(keys="pred", meta_keys="pred_meta_dict", output_dir='final_output',
         #            output_postfix="stage2——raw", output_ext=".nii.gz", resample=False), #在invertd 已经 resample回去了
 ])
-stage2_post_transforms =   Compose(
-    [Invertd(
+stage2_post_transforms =   Compose([Invertd(
             keys="pred",  # invert the `pred` data field, also support multiple fields
             transform=stage2_test_transforms,
             orig_keys="image",  # get the previously applied pre_transforms information on the `img` data field,
