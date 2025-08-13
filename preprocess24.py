@@ -37,7 +37,6 @@ def organ_data_module(task_dir, dataset = 'flare2024', phase = 'phase_1', batch_
 
     if train_mode:
         resize_coarse = (128,128,128)
-
         if dataset == 'flare2024' and phase == 'phase_1':
             train_transforms = Compose([
                     LoadImaged(keys=["image", "label"]), #若是nibabel读取（nii.gz文件）， 转化为sitk 格式
@@ -49,45 +48,35 @@ def organ_data_module(task_dir, dataset = 'flare2024', phase = 'phase_1', batch_
                     #     pixdim=(2, 2, 2.5),   #plyu设置的是1.5，1.5，2             
                     #     mode=("bilinear", "nearest"),
                     # ),
-                    
                     Resized( keys=["image", "label"], spatial_size=resize_coarse , mode=("trilinear", "nearest")),
                     NormalizeIntensityd(keys='image',nonzero =True), 
-
-                    
                     # SpatialPadd(keys=['image', 'label'], spatial_size=sample_patch,method ='end',mode='constant'), #对低于spatial_size 的维度pad
-
                     RandFlipd(
                         keys=["image", "label"],
                         spatial_axis=[0],
-                        prob=0.10,
-                    ),
+                        prob=0.10,),
                     RandFlipd(
                         keys=["image", "label"],
                         spatial_axis=[1],
-                        prob=0.10,
-                    ),
+                        prob=0.10,),
                     RandFlipd(
                         keys=["image", "label"],
                         spatial_axis=[2],
-                        prob=0.10,
-                    ),
+                        prob=0.10,),
                     RandRotate90d(
                         keys=["image", "label"],
                         prob=0.10,
-                        max_k=3,
-                    ),
+                        max_k=3,),
                     # RandScaleIntensityd(keys=["image"], factors=0.1, prob=0.1), plyu中使用，被jcxiong注释
                     RandShiftIntensityd(
                         keys=["image"],
                         offsets=0.10,
-                        prob=0.1,
-                    ),
+                        prob=0.1,),
                     RandAffined(
                         keys=['image', 'label'],
                         mode=('bilinear', 'nearest'),
                         prob=0.1, spatial_size=resize_coarse,
-                        rotate_range=(0, 0, np.pi / 15),
-                        scale_range=(0.1, 0.1, 0.1)),
+                        rotate_range=(0, 0, np.pi / 15), scale_range=(0.1, 0.1, 0.1)),
 
                     ToTensord(keys=["image", "label"]),])
           
@@ -129,37 +118,28 @@ def organ_data_module(task_dir, dataset = 'flare2024', phase = 'phase_1', batch_
                                         keys=["image", "label"],
                                         label_key="label",
                                         spatial_size=sample_patch,
-                                        pos=5,
-                                        neg=1,
-                                        num_samples=num_samples,),
-                                   
-                                    
+                                        pos=5, neg=1, num_samples=num_samples,),                   
                     RandFlipd(
                         keys=["image", "label"],
                         spatial_axis=[0],
-                        prob=0.10,
-                    ),
+                        prob=0.10,),
                     RandFlipd(
                         keys=["image", "label"],
                         spatial_axis=[1],
-                        prob=0.10,
-                    ),
+                        prob=0.10,),
                     RandFlipd(
                         keys=["image", "label"],
                         spatial_axis=[2],
-                        prob=0.10,
-                    ),
+                        prob=0.10,),
                     RandRotate90d(
                         keys=["image", "label"],
                         prob=0.10,
-                        max_k=3,
-                    ),
+                        max_k=3,),
                     RandScaleIntensityd(keys=["image"], factors=0.1, prob=0.1),
                     RandShiftIntensityd(
                         keys=["image"],
                         offsets=0.10,
-                        prob=0.1,
-                    ),
+                        prob=0.1,),
                     RandAffined(
                         keys=['image', 'label'],
                         mode=('bilinear', 'nearest'),
