@@ -176,7 +176,6 @@ def organ_data_module(task_dir, dataset = 'flare2024', phase = 'phase_1', batch_
             train_loader = DataLoader(train_ds, num_workers=6, batch_size=batch_size, shuffle=True, drop_last=True)
             val_ds       = CacheDataset(data=val_files, transform=val_transforms, cache_num=len(val_files), cache_rate=1.0, num_workers=0,copy_cache=False)
             val_loader   = DataLoader(val_ds, num_workers=0, batch_size=1,shuffle=False,)
-
         else:
             train_ds = Dataset(
                 data=train_files,
@@ -205,10 +204,7 @@ stage1_test_transforms =  Compose([
 sample_patch = (96,96,96)
 stage2_test_transforms = Compose([
             CropForegroundd(keys=["image"], source_key="pred_ROI"),  # 取label 的 value > 0
-            Spacingd(
-                keys=["image"],
-                pixdim=(1.5, 1.5, 2),
-                mode=("bilinear"),),
+            Spacingd(keys=["image"], pixdim=(1.5, 1.5, 2), mode=("bilinear"),),
             NormalizeIntensityd(keys=['image'], nonzero=True),
             SpatialPadd(keys=['image'], spatial_size=sample_patch, method='end', mode='constant'),# 对低于spatial_size 的维度pad
             ])
@@ -217,7 +213,6 @@ stage1_post_transforms = Compose([
         # EnsureTyped(keys="pred_ROI"),
         Activationsd(keys="pred_ROI", softmax=True),
         AsDiscreted(keys="pred_ROI", argmax=True),
-
         Invertd(
             keys="pred_ROI",  # invert the `pred` data field, also support multiple fields
             transform=stage1_test_transforms,
