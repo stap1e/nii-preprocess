@@ -25,7 +25,7 @@ def main(mode):
         raise ValueError(f"error mode: {mode}")
 
 
-    # get name txt
+    # 2. get name txt file
     names  = os.listdir(path)
     for name in names:
         if name.split('.')[-1] != 'h5':
