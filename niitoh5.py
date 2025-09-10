@@ -18,8 +18,8 @@ def main():
     imgnii_names = sorted(os.listdir(nii_imgpath))
     for img_name in imgnii_names:
         id = imgnii_names.index(img_name)
-        img = sitk.GetArrayFromImage(sitk_img)
         sitk_img = sitk.ReadImage(os.path.join(nii_imgpath, img_name))
+        img = sitk.GetArrayFromImage(sitk_img)
 
         if mode == 'l':
             mask_name = masknii_names[id]
