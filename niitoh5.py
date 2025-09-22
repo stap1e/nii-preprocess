@@ -4,7 +4,7 @@ import SimpleITK as sitk
 
 
 def main():
-    mode = 'u'
+    mode = 'l'
     if mode == 'l':
         # nii_imgpath = 'E:/FLARE-Lab/FLARE25/images_preprocess2' # flare
         # nii_maskpath = 'E:/FLARE-Lab/FLARE25/labels_preprocess2' # flare
