@@ -17,7 +17,8 @@ def main():
         niiimgnames = sorted(os.listdir(img_path))
         niimasknames = sorted(os.listdir(mask_path))
     elif mode == 'train_u':
-        img_path = 'E:/FLARE-Lab/FLARE25/unlabeled'
+        img_path = 'E:/FLARE-Lab/FLARE25/unlabeled' # flare
+        img_path = 'E:/AbdomenCT-1K/unlabeled' # AK
         niiimgnames = sorted(os.listdir(img_path))
 
 
@@ -27,7 +28,7 @@ def main():
         if mode == 'train_l':
             niimaskname = niimasknames[id]
             print(f"{'='*15} Processing img-{niiimgname}, mask-{niimaskname} {'='*15}")
-            if niiimgname.split('_0000')[0] != niimaskname.split('.')[0]:
+            if niiimgname.split('_0000.nii.gz')[0] != niimaskname.split('.')[0]:
                 print(f"This itertion is not match for img and mask....")
                 continue
         elif mode == 'train_u':
@@ -62,7 +63,7 @@ def main():
         cureImage(img_final, img_sitk)
 
         ### 2. set up spacing
-        outspacing = [1.254798173904419, 1.254798173904419, 2.5]
+        outspacing = [1.254798173904419, 1.254798173904419, 2.5] # flare and AK
         img_outsize , mask_outsize = [0, 0, 0], [0, 0, 0]
         img_spacing , imgsize  = img_final.GetSpacing(), img_final.GetSize()
 
@@ -92,16 +93,16 @@ def main():
         
         ### 3. save to nii
         if mode == 'train_l':
-            pathtoimg = 'E:/FLARE-Lab/FLARE25/images_preprocess2' # flare
-            pathtomask = 'E:/FLARE-Lab/FLARE25/labels_preprocess2' # flare
+            # pathtoimg = 'E:/FLARE-Lab/FLARE25/images_preprocess2' # flare
+            # pathtomask = 'E:/FLARE-Lab/FLARE25/labels_preprocess2' # flare
             pathtoimg = 'E:/AbdomenCT-1K/test1/imgs' # AK
             pathtomask = 'E:/AbdomenCT-1K/test1/labels' # AK
             os.makedirs(pathtomask, exist_ok=True)
             sitk.WriteImage(mask_final_sitk, os.path.join(pathtomask, niimaskname))
             print(f"...保存完成 mask: {(niimaskname):50s} nii.gz文件 to {os.path.join(pathtomask, niimaskname)}")
         else:
-            pathtoimg = 'E:/FLARE-Lab/FLARE25/unlabeled_preprocess2'
-        # pathtoimg = 'E:/FLARE-Lab/FLARE25/images_preprocess'
+            # pathtoimg = 'E:/FLARE-Lab/FLARE25/unlabeled_preprocess2' # FLARE
+            pathtoimg = 'E:/AbdomenCT-1K/unlabeled_preprocess' # AK
         os.makedirs(pathtoimg, exist_ok=True)
         sitk.WriteImage(img_final_sitk, os.path.join(pathtoimg, niiimgname))
         print(f"...保存完成 img : {(niiimgname):50s} nii.gz文件 to {os.path.join(pathtoimg, niiimgname)}")
