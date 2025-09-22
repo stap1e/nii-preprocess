@@ -7,11 +7,13 @@ from preprocess import cureImage
 
 def main():
     index = 0
-    mode = 'train_u'
+    mode = 'train_l'
 
     if mode == 'train_l':
-        img_path = 'E:/FLARE-Lab/FLARE25/imagesTr'
-        mask_path = 'E:/FLARE-Lab/FLARE25/labelsTr'
+        # img_path = 'E:/FLARE-Lab/FLARE25/imagesTr' # flare
+        # mask_path = 'E:/FLARE-Lab/FLARE25/labelsTr' # flare
+        img_path = "E:/AbdomenCT-1K/Image" # AK
+        mask_path = "E:/AbdomenCT-1K/Mask" # AK
         niiimgnames = sorted(os.listdir(img_path))
         niimasknames = sorted(os.listdir(mask_path))
     elif mode == 'train_u':
@@ -90,8 +92,10 @@ def main():
         
         ### 3. save to nii
         if mode == 'train_l':
-            pathtoimg = 'E:/FLARE-Lab/FLARE25/images_preprocess2'
-            pathtomask = 'E:/FLARE-Lab/FLARE25/labels_preprocess2'
+            pathtoimg = 'E:/FLARE-Lab/FLARE25/images_preprocess2' # flare
+            pathtomask = 'E:/FLARE-Lab/FLARE25/labels_preprocess2' # flare
+            pathtoimg = 'E:/AbdomenCT-1K/test1/imgs' # AK
+            pathtomask = 'E:/AbdomenCT-1K/test1/labels' # AK
             os.makedirs(pathtomask, exist_ok=True)
             sitk.WriteImage(mask_final_sitk, os.path.join(pathtomask, niimaskname))
             print(f"...保存完成 mask: {(niimaskname):50s} nii.gz文件 to {os.path.join(pathtomask, niimaskname)}")
@@ -108,7 +112,6 @@ def main():
         #     break
     
     print(f"{'='*20} All done, total {index} cases {'='*20}")
-
 
 
 
