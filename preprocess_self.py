@@ -7,7 +7,7 @@ from preprocess import cureImage
 
 def main():
     index = 0
-    mode = 'train_l'
+    mode = 'train_u' # or 'train_l'
 
     if mode == 'train_l':
         # img_path = 'E:/FLARE-Lab/FLARE25/imagesTr' # flare
