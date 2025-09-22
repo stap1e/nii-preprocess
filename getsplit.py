@@ -11,7 +11,7 @@ def main(mode):
         group2 = [i for i in ids if i not in group1]
         print("Group1:", group1)
         print("Group2:", group2)
-        path = "E:/FLARE-Lab/FLARE25/test4/train_l_h5"
+        path = "E:/FLARE-Lab/FLARE25/test4/train_l_h5" # flare
     elif mode == 'val':
         ids = list(range(51, 101))                
         group1 = random.sample(ids, 10)
