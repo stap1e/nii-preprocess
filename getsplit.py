@@ -6,7 +6,7 @@ def main(mode):
     random.seed(2025)
 
     if mode == 'tl':
-        ids = list(range(1, 51))                
+        ids = list(range(1, 101))                
         group1 = random.sample(ids, 10)
         group2 = [i for i in ids if i not in group1]
         print("Group1:", group1)
