@@ -6,13 +6,18 @@ import SimpleITK as sitk
 def main():
     mode = 'u'
     if mode == 'l':
-        nii_imgpath = 'E:/FLARE-Lab/FLARE25/images_preprocess2'
-        nii_maskpath = 'E:/FLARE-Lab/FLARE25/labels_preprocess2'
-        h5_save_path = 'E:/FLARE-Lab/FLARE25/labeled_h5'
+        # nii_imgpath = 'E:/FLARE-Lab/FLARE25/images_preprocess2' # flare
+        # nii_maskpath = 'E:/FLARE-Lab/FLARE25/labels_preprocess2' # flare
+        # h5_save_path = 'E:/FLARE-Lab/FLARE25/labeled_h5' # flare
+        nii_imgpath = 'E:/AbdomenCT-1K/test1/imgs' # AK
+        nii_maskpath = 'E:/AbdomenCT-1K/test1/labels' # AK
+        h5_save_path = 'E:/AbdomenCT-1K/test1/labeled_h5' # AK
         masknii_names = sorted(os.listdir(nii_maskpath))
     elif mode == 'u':
-        nii_imgpath = 'E:/FLARE-Lab/FLARE25/unlabeled_preprocess2'
-        h5_save_path = 'E:/FLARE-Lab/FLARE25/unlabeled_h5'
+        # nii_imgpath = 'E:/FLARE-Lab/FLARE25/unlabeled_preprocess2' # flare
+        # h5_save_path = 'E:/FLARE-Lab/FLARE25/unlabeled_h5' # flare
+        nii_imgpath = 'E:/AbdomenCT-1K/unlabeled_preprocess' # AK
+        h5_save_path = 'E:/AbdomenCT-1K/test1/unlabeled_h5' # AK
 
     os.makedirs(h5_save_path, exist_ok=True)
     imgnii_names = sorted(os.listdir(nii_imgpath))
