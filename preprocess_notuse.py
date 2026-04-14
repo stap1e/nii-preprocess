@@ -100,17 +100,17 @@ def main():
     # h5_save_path = "E:/FLARE25/train_gt_label/h5_test"
 
     # for val
-    img_r_path = 'E:/FLARE25/test/nii_val_img1'
-    mask_r_path = 'E:/FLARE25/test/nii_val_mask1'
+    # img_r_path = 'E:/FLARE25/test/nii_val_img1'
+    # mask_r_path = 'E:/FLARE25/test/nii_val_mask1'
 
     # for train_l
     # img_r_path = 'E:/FLARE25/test/nii_train_l_img2'
     # mask_r_path = 'E:/FLARE25/test/nii_train_l_mask2'
 
     # for train_u
-    # img_r_path = 'E:/FLARE25/test/nii_train_u_img1'
+    img_r_path = 'E:/FLARE25/test/nii_train_u_img1'
     os.makedirs(img_r_path, exist_ok=True)
-    os.makedirs(mask_r_path, exist_ok=True)
+    # os.makedirs(mask_r_path, exist_ok=True)
 
     # for train_l
     # trainimg_path  = 'E:/FLARE25/train_gt_label/imagesTr'
@@ -187,9 +187,9 @@ def main():
         print(f"...保存完成 {(niiimgname):50s} nii.gz文件 to {savepath.split('nii_mid_results')[-1]}")
 
         # for labeled
-        savemaskpath = os.path.join(mask_r_path, niimaskname)
+        # savemaskpath = os.path.join(mask_r_path, niimaskname)
         # save_nii_file(sitk_mask, savemaskpath, direction=new_direciton, ifzhao=False, mask=True)
-        save_nii_file(sitk_mask, savemaskpath, ifzhao=False, mask=True)
+        # save_nii_file(sitk_mask, savemaskpath, ifzhao=False, mask=True)
 
         # min_mean += min_organ_value
         # max_mean += max_organ_value

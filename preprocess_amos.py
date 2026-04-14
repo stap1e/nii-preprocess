@@ -4,7 +4,7 @@ import os
 import SimpleITK as sitk
 from pathlib import Path
 
-from preprocess import cureImage
+from preprocess_notuse import cureImage
 
 # only preprocess for AMOS22 latest
 def main():

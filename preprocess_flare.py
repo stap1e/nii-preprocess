@@ -3,7 +3,7 @@ import numpy as np
 import os
 import SimpleITK as sitk
 
-from preprocess import cureImage
+from preprocess_notuse import cureImage
 
 def main():
     index = 0
@@ -17,8 +17,8 @@ def main():
         niiimgnames = sorted(os.listdir(img_path))
         niimasknames = sorted(os.listdir(mask_path))
     elif mode == 'train_u':
-        img_path = 'E:/FLARE-Lab/FLARE25/unlabeled' # flare
-        img_path = 'E:/AbdomenCT-1K/unlabeled' # AK
+        img_path = "E:\FLARE-Lab\FLARE22\FLARE22_UnlabeledCase1001-1500" # flare
+        # img_path = 'E:/AbdomenCT-1K/unlabeled' # AK
         niiimgnames = sorted(os.listdir(img_path))
 
 
@@ -101,8 +101,8 @@ def main():
             sitk.WriteImage(mask_final_sitk, os.path.join(pathtomask, niimaskname))
             print(f"...保存完成 mask: {(niimaskname):50s} nii.gz文件 to {os.path.join(pathtomask, niimaskname)}")
         else:
-            # pathtoimg = 'E:/FLARE-Lab/FLARE25/unlabeled_preprocess2' # FLARE
-            pathtoimg = 'E:/AbdomenCT-1K/unlabeled_preprocess' # AK
+            pathtoimg = 'E:/FLARE-Lab/FLARE25/unlabeled_preprocess_26_all' # FLARE
+            # pathtoimg = 'E:/AbdomenCT-1K/unlabeled_preprocess' # AK
         os.makedirs(pathtoimg, exist_ok=True)
         sitk.WriteImage(img_final_sitk, os.path.join(pathtoimg, niiimgname))
         print(f"...保存完成 img : {(niiimgname):50s} nii.gz文件 to {os.path.join(pathtoimg, niiimgname)}")
