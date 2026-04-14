@@ -6,44 +6,104 @@ from pathlib import Path
 
 from preprocess_notuse import cureImage
 
+
+def _build_temp_output_path(final_path):
+    if final_path.endswith(".nii.gz"):
+        return final_path[:-7] + ".tmp.nii.gz"
+
+    root, ext = os.path.splitext(final_path)
+    return root + ".tmp" + ext
+
+
+def remove_file_if_exists(file_path):
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+
+def safe_write_image(image, final_path):
+    temp_path = _build_temp_output_path(final_path)
+    remove_file_if_exists(temp_path)
+    try:
+        sitk.WriteImage(image, temp_path)
+        os.replace(temp_path, final_path)
+    except Exception:
+        remove_file_if_exists(temp_path)
+        raise
+
+
+def append_error_log(log_path, case_name, message):
+    with open(log_path, 'a') as f:
+        f.write(case_name)
+        f.write(message)
+        f.write('\n')
+
+
 # only preprocess for AMOS22 latest
 def main():
     index = 0
     mode = 'train_u' # 'train_u' or 'train_l'
+    error_log_path = "E:/AMOS-Lab/AMOS22/direction_error.txt"
 
     if mode == 'train_l':
         img_path = "E:/AMOS-Lab/AMOS22/labeled/images" # AMOS
         mask_path = "E:/AMOS-Lab/AMOS22/labeled/labels" # AMOS
+        pathtoimg = "E:/AMOS-Lab/AMOS22/labeled_preprocess/images" # AMOS
+        pathtomask = "E:/AMOS-Lab/AMOS22/labeled_preprocess/labels" # AMOS
         niiimgnames = sorted(os.listdir(img_path))
         niimasknames = sorted(os.listdir(mask_path))
     elif mode == 'train_u':
         # img_path = 'E:/AMOS-Lab/AMOS22/unlabeled/' # AMOS old
         img_path = 'E:/AMOS-Lab/AMOS22/unlabeled_new/' # AMOS new10
+        pathtoimg = "E:\AMOS-Lab\AMOS22_unlabeled_new" # AMOS
         niiimgnames = sorted(os.listdir(img_path))
 
+    os.makedirs(pathtoimg, exist_ok=True)
+    if mode == 'train_l':
+        os.makedirs(pathtomask, exist_ok=True)
+
     # batch process nii data
-    for niiimgname in niiimgnames:
+    for sample_idx, niiimgname in enumerate(niiimgnames):
+        imgfilepath = os.path.join(img_path, niiimgname)
+        target_img_path = os.path.join(pathtoimg, niiimgname)
+
+        niimaskname = None
+        target_mask_path = None
         if mode == 'train_l':
-            id = niiimgnames.index(niiimgname)
-            niimaskname = niimasknames[id]
+            niimaskname = niimasknames[sample_idx]
+            maskfilepath = os.path.join(mask_path, niimaskname)
+            target_mask_path = os.path.join(pathtomask, niimaskname)
             print(f"{'='*15} Processing img-{niiimgname}, mask-{niimaskname} {'='*15}")
             if niiimgname != niimaskname:
                 print(f"This itertion is not match for img and mask....")
                 break
-        elif mode == 'train_u':
+        else:
             print(f"{'='*15} Processing img-{niiimgname} {'='*15}")
 
-        if mode == 'train_l':
-            imgfilepath = os.path.join(img_path, niiimgname)
-            maskfilepath = os.path.join(mask_path, niimaskname)
+        remove_file_if_exists(_build_temp_output_path(target_img_path))
+        if target_mask_path is not None:
+            remove_file_if_exists(_build_temp_output_path(target_mask_path))
+
+        img_exists = os.path.exists(target_img_path)
+        if target_mask_path is None:
+            if img_exists:
+                print(f"...跳过已存在样本 img : {(niiimgname):50s}")
+                continue
         else:
-            imgfilepath = os.path.join(img_path, niiimgname)
+            mask_exists = os.path.exists(target_mask_path)
+            if img_exists and mask_exists:
+                print(f"...跳过已存在样本 img : {(niiimgname):50s}")
+                print(f"...跳过已存在样本 mask: {(niimaskname):50s}")
+                continue
+            if img_exists != mask_exists:
+                print("...检测到历史半成品，删除后重新生成当前样本")
+                remove_file_if_exists(target_img_path)
+                remove_file_if_exists(target_mask_path)
 
         if Path(imgfilepath).stat().st_size == 0:
-            with open("E:/AMOS-Lab/AMOS22/direction_error.txt", 'a') as f:
-                f.write(niiimgname)
-                f.write(f"     ImageIO reader file: {niiimgname}")
-                f.write('\n')
+            append_error_log(error_log_path, niiimgname, f"     ImageIO reader file: {niiimgname}")
+            continue
+        if mode == 'train_l' and Path(maskfilepath).stat().st_size == 0:
+            append_error_log(error_log_path, niimaskname, f"     Label reader file: {niimaskname}")
             continue
 
         img_sitk  = sitk.ReadImage(imgfilepath,  sitk.sitkFloat32)           # Reading CT
@@ -53,10 +113,7 @@ def main():
             mask      = sitk.GetArrayFromImage(mask_sitk).astype(np.float32) # Converting sitk_metadata to image Array
         
         if len(img_sitk.GetDirection()) != 9:
-            with open("E:/AMOS-Lab/AMOS22/direction_error.txt", 'a') as f:
-                f.write(niiimgname)
-                f.write(f"    direction len is: {len(img_sitk.GetDirection())}")
-                f.write('\n')
+            append_error_log(error_log_path, niiimgname, f"    direction len is: {len(img_sitk.GetDirection())}")
             continue
         # normalise image， intensity clipping to [-40, 325]
         np_img = np.clip(image, -40., 325.).astype(np.float32)
@@ -105,16 +162,17 @@ def main():
         
         ### 3. save to nii
         if mode == 'train_l':
-            pathtoimg = "E:/AMOS-Lab/AMOS22/labeled_preprocess/images" # AMOS
-            pathtomask = "E:/AMOS-Lab/AMOS22/labeled_preprocess/labels" # AMOS
-            os.makedirs(pathtomask, exist_ok=True)
-            sitk.WriteImage(mask_final_sitk, os.path.join(pathtomask, niimaskname))
-            print(f"...保存完成 mask: {(niimaskname):50s} nii.gz文件 to {os.path.join(pathtomask, niimaskname)}")
+            try:
+                safe_write_image(mask_final_sitk, target_mask_path)
+                safe_write_image(img_final_sitk, target_img_path)
+            except Exception:
+                remove_file_if_exists(target_img_path)
+                remove_file_if_exists(target_mask_path)
+                raise
+            print(f"...保存完成 mask: {(niimaskname):50s} nii.gz文件 to {target_mask_path}")
         else:
-            pathtoimg = 'E:/AMOS-Lab/AMOS22/unlabeled_preprocess_new' # AMOS
-        os.makedirs(pathtoimg, exist_ok=True)
-        sitk.WriteImage(img_final_sitk, os.path.join(pathtoimg, niiimgname))
-        print(f"...保存完成 img : {(niiimgname):50s} nii.gz文件 to {os.path.join(pathtoimg, niiimgname)}")
+            safe_write_image(img_final_sitk, target_img_path)
+        print(f"...保存完成 img : {(niiimgname):50s} nii.gz文件 to {target_img_path}")
 
         ### 4. debugg and select final method
         index += 1

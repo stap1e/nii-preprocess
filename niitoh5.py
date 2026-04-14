@@ -4,7 +4,7 @@ import SimpleITK as sitk
 
 
 def main():
-    mode = 'l'
+    mode = 'u'
     if mode == 'l':
         # nii_imgpath = 'E:/FLARE-Lab/FLARE25/images_preprocess2' # flare
         # nii_maskpath = 'E:/FLARE-Lab/FLARE25/labels_preprocess2' # flare
@@ -16,8 +16,8 @@ def main():
     elif mode == 'u':
         # nii_imgpath = 'E:/FLARE-Lab/FLARE25/unlabeled_preprocess2' # flare
         # h5_save_path = 'E:/FLARE-Lab/FLARE25/unlabeled_h5' # flare
-        nii_imgpath = 'E:/AbdomenCT-1K/unlabeled_preprocess' # AK
-        h5_save_path = 'E:/AbdomenCT-1K/test1/unlabeled_h5' # AK
+        nii_imgpath = "E:/FLARE-Lab/FLARE25/unlabeled_preprocess_mid"
+        h5_save_path = "E:/FLARE-Lab/FLARE25/unlabeled_h5_add_mid"
 
     os.makedirs(h5_save_path, exist_ok=True)
     imgnii_names = sorted(os.listdir(nii_imgpath))
