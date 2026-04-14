@@ -5,6 +5,31 @@ import SimpleITK as sitk
 
 from preprocess_notuse import cureImage
 
+
+def _build_temp_output_path(final_path):
+    if final_path.endswith(".nii.gz"):
+        return final_path[:-7] + ".tmp.nii.gz"
+
+    root, ext = os.path.splitext(final_path)
+    return root + ".tmp" + ext
+
+
+def remove_file_if_exists(file_path):
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+
+def safe_write_image(image, final_path):
+    temp_path = _build_temp_output_path(final_path)
+    remove_file_if_exists(temp_path)
+    try:
+        sitk.WriteImage(image, temp_path)
+        os.replace(temp_path, final_path)
+    except Exception:
+        remove_file_if_exists(temp_path)
+        raise
+
+
 def main():
     index = 0
     mode = 'train_u' # or 'train_l'
@@ -14,13 +39,22 @@ def main():
         # mask_path = 'E:/FLARE-Lab/FLARE25/labelsTr' # flare
         img_path = "E:/AbdomenCT-1K/Image" # AK
         mask_path = "E:/AbdomenCT-1K/Mask" # AK
+        # pathtoimg = 'E:/FLARE-Lab/FLARE25/images_preprocess2' # flare
+        # pathtomask = 'E:/FLARE-Lab/FLARE25/labels_preprocess2' # flare
+        pathtoimg = 'E:/AbdomenCT-1K/test1/imgs' # AK
+        pathtomask = 'E:/AbdomenCT-1K/test1/labels' # AK
         niiimgnames = sorted(os.listdir(img_path))
         niimasknames = sorted(os.listdir(mask_path))
     elif mode == 'train_u':
-        img_path = "E:\FLARE-Lab\FLARE22\FLARE22_UnlabeledCase1001-1500" # flare
+        img_path = "E:\FLARE-Lab\FLARE22\FLARE22_UnlabeledCase751-1000" # flare
         # img_path = 'E:/AbdomenCT-1K/unlabeled' # AK
+        pathtoimg = 'E:/FLARE-Lab/FLARE25/unlabeled_preprocess_26_all' # FLARE
+        # pathtoimg = 'E:/AbdomenCT-1K/unlabeled_preprocess' # AK
         niiimgnames = sorted(os.listdir(img_path))
 
+    os.makedirs(pathtoimg, exist_ok=True)
+    if mode == 'train_l':
+        os.makedirs(pathtomask, exist_ok=True)
 
     # batch process nii data
     for niiimgname in niiimgnames:
@@ -37,8 +71,30 @@ def main():
         if mode == 'train_l':
             imgfilepath = os.path.join(img_path, niiimgname)
             maskfilepath = os.path.join(mask_path, niimaskname)
+            target_img_path = os.path.join(pathtoimg, niiimgname)
+            target_mask_path = os.path.join(pathtomask, niimaskname)
         else:
             imgfilepath = os.path.join(img_path, niiimgname)
+            target_img_path = os.path.join(pathtoimg, niiimgname)
+
+        remove_file_if_exists(_build_temp_output_path(target_img_path))
+        if mode == 'train_l':
+            remove_file_if_exists(_build_temp_output_path(target_mask_path))
+
+        if mode == 'train_l':
+            img_exists = os.path.exists(target_img_path)
+            mask_exists = os.path.exists(target_mask_path)
+            if img_exists and mask_exists:
+                print(f"...跳过已存在样本 img : {(niiimgname):50s}")
+                print(f"...跳过已存在样本 mask: {(niimaskname):50s}")
+                continue
+            if img_exists != mask_exists:
+                print("...检测到历史半成品，删除后重新生成当前样本")
+                remove_file_if_exists(target_img_path)
+                remove_file_if_exists(target_mask_path)
+        elif os.path.exists(target_img_path):
+            print(f"...跳过已存在样本 img : {(niiimgname):50s}")
+            continue
 
         img_sitk  = sitk.ReadImage(imgfilepath,  sitk.sitkFloat32)           # Reading CT
         image     = sitk.GetArrayFromImage(img_sitk).astype(np.float32)      # Converting sitk_metadata to image Array
@@ -93,19 +149,17 @@ def main():
         
         ### 3. save to nii
         if mode == 'train_l':
-            # pathtoimg = 'E:/FLARE-Lab/FLARE25/images_preprocess2' # flare
-            # pathtomask = 'E:/FLARE-Lab/FLARE25/labels_preprocess2' # flare
-            pathtoimg = 'E:/AbdomenCT-1K/test1/imgs' # AK
-            pathtomask = 'E:/AbdomenCT-1K/test1/labels' # AK
-            os.makedirs(pathtomask, exist_ok=True)
-            sitk.WriteImage(mask_final_sitk, os.path.join(pathtomask, niimaskname))
-            print(f"...保存完成 mask: {(niimaskname):50s} nii.gz文件 to {os.path.join(pathtomask, niimaskname)}")
+            try:
+                safe_write_image(mask_final_sitk, target_mask_path)
+                safe_write_image(img_final_sitk, target_img_path)
+            except Exception:
+                remove_file_if_exists(target_img_path)
+                remove_file_if_exists(target_mask_path)
+                raise
+            print(f"...保存完成 mask: {(niimaskname):50s} nii.gz文件 to {target_mask_path}")
         else:
-            pathtoimg = 'E:/FLARE-Lab/FLARE25/unlabeled_preprocess_26_all' # FLARE
-            # pathtoimg = 'E:/AbdomenCT-1K/unlabeled_preprocess' # AK
-        os.makedirs(pathtoimg, exist_ok=True)
-        sitk.WriteImage(img_final_sitk, os.path.join(pathtoimg, niiimgname))
-        print(f"...保存完成 img : {(niiimgname):50s} nii.gz文件 to {os.path.join(pathtoimg, niiimgname)}")
+            safe_write_image(img_final_sitk, target_img_path)
+        print(f"...保存完成 img : {(niiimgname):50s} nii.gz文件 to {target_img_path}")
 
         ### 4. debugg and select final method
         index += 1
