@@ -95,9 +95,11 @@ def main():
                 remove_file_if_exists(target_mask_path)
 
         img_sitk  = sitk.ReadImage(imgfilepath,  sitk.sitkFloat32)           # Reading CT
+        img_sitk = sitk.DICOMOrient(img_sitk, 'RAS')
         image     = sitk.GetArrayFromImage(img_sitk).astype(np.float32)      # Converting sitk_metadata to image Array
         if mode == 'train_l':
             mask_sitk = sitk.ReadImage(maskfilepath, sitk.sitkInt32)         # Reading CT
+            mask_sitk = sitk.DICOMOrient(mask_sitk, 'RAS')
             mask      = sitk.GetArrayFromImage(mask_sitk).astype(np.float32) # Converting sitk_metadata to image Array
 
         # normalise image， intensity clipping to [-40, 325]

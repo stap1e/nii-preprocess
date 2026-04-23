@@ -37,6 +37,33 @@ def append_error_log(log_path, case_name, message):
         f.write(message)
         f.write('\n')
 
+def resample_sitk_image(sitk_image, new_spacing, is_label=False):
+            """使用 SimpleITK 进行基于物理空间的重采样"""
+            original_spacing = sitk_image.GetSpacing()
+            original_size = sitk_image.GetSize()
+            
+            # 计算新尺寸
+            new_size = [
+                int(np.round(original_size[0] * (original_spacing[0] / new_spacing[0]))),
+                int(np.round(original_size[1] * (original_spacing[1] / new_spacing[1]))),
+                int(np.round(original_size[2] * (original_spacing[2] / new_spacing[2])))
+            ]
+            
+            resample = sitk.ResampleImageFilter()
+            resample.SetOutputSpacing(new_spacing)
+            resample.SetSize(new_size)
+            resample.SetOutputDirection(sitk_image.GetDirection())
+            resample.SetOutputOrigin(sitk_image.GetOrigin())
+            resample.SetTransform(sitk.Transform())
+            resample.SetDefaultPixelValue(sitk_image.GetPixelIDValue())
+            
+            # 图像用 B-Spline (或 Linear) 插值，Mask 必须用 NearestNeighbor 防止产生伪标签
+            if is_label:
+                resample.SetInterpolator(sitk.sitkNearestNeighbor)
+            else:
+                resample.SetInterpolator(sitk.sitkBSpline) 
+                
+            return resample.Execute(sitk_image)
 
 # only preprocess for AMOS22 latest
 def main():
@@ -107,9 +134,11 @@ def main():
             continue
 
         img_sitk  = sitk.ReadImage(imgfilepath,  sitk.sitkFloat32)           # Reading CT
+        img_sitk = sitk.DICOMOrient(img_sitk, 'RAS')
         image     = sitk.GetArrayFromImage(img_sitk).astype(np.float32)      # Converting sitk_metadata to image Array
         if mode == 'train_l':
             mask_sitk = sitk.ReadImage(maskfilepath, sitk.sitkInt32)         # Reading CT
+            mask_sitk = sitk.DICOMOrient(mask_sitk, 'RAS')
             mask      = sitk.GetArrayFromImage(mask_sitk).astype(np.float32) # Converting sitk_metadata to image Array
         
         if len(img_sitk.GetDirection()) != 9:
