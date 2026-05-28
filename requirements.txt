@@ -1,0 +1,7 @@
+h5py>=3.8
+nibabel>=5.0
+numpy>=1.23
+scikit-image>=0.20
+SimpleITK>=2.2
+torch>=2.0
+monai>=1.3

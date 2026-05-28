@@ -2,86 +2,35 @@ from skimage.transform import resize
 import numpy as np
 import os
 import SimpleITK as sitk
-from pathlib import Path
 
-from preprocess_notuse import cureImage
-
-
-def _build_temp_output_path(final_path):
-    if final_path.endswith(".nii.gz"):
-        return final_path[:-7] + ".tmp.nii.gz"
-
-    root, ext = os.path.splitext(final_path)
-    return root + ".tmp" + ext
+from med_preprocess.io.nii_io import (
+    _build_temp_output_path,
+    remove_file_if_exists,
+    safe_write_image,
+)
+from med_preprocess.transforms import cureImage
 
 
-def remove_file_if_exists(file_path):
-    if os.path.exists(file_path):
-        os.remove(file_path)
-
-
-def safe_write_image(image, final_path):
-    temp_path = _build_temp_output_path(final_path)
-    remove_file_if_exists(temp_path)
-    try:
-        sitk.WriteImage(image, temp_path)
-        os.replace(temp_path, final_path)
-    except Exception:
-        remove_file_if_exists(temp_path)
-        raise
-
-
-def append_error_log(log_path, case_name, message):
-    with open(log_path, 'a') as f:
-        f.write(case_name)
-        f.write(message)
-        f.write('\n')
-
-def resample_sitk_image(sitk_image, new_spacing, is_label=False):
-            """使用 SimpleITK 进行基于物理空间的重采样"""
-            original_spacing = sitk_image.GetSpacing()
-            original_size = sitk_image.GetSize()
-            
-            # 计算新尺寸
-            new_size = [
-                int(np.round(original_size[0] * (original_spacing[0] / new_spacing[0]))),
-                int(np.round(original_size[1] * (original_spacing[1] / new_spacing[1]))),
-                int(np.round(original_size[2] * (original_spacing[2] / new_spacing[2])))
-            ]
-            
-            resample = sitk.ResampleImageFilter()
-            resample.SetOutputSpacing(new_spacing)
-            resample.SetSize(new_size)
-            resample.SetOutputDirection(sitk_image.GetDirection())
-            resample.SetOutputOrigin(sitk_image.GetOrigin())
-            resample.SetTransform(sitk.Transform())
-            resample.SetDefaultPixelValue(sitk_image.GetPixelIDValue())
-            
-            # 图像用 B-Spline (或 Linear) 插值，Mask 必须用 NearestNeighbor 防止产生伪标签
-            if is_label:
-                resample.SetInterpolator(sitk.sitkNearestNeighbor)
-            else:
-                resample.SetInterpolator(sitk.sitkBSpline) 
-                
-            return resample.Execute(sitk_image)
-
-# only preprocess for AMOS22 latest
 def main():
     index = 0
-    mode = 'train_u' # 'train_u' or 'train_l'
-    error_log_path = "E:/AMOS-Lab/AMOS22/direction_error.txt"
+    mode = 'train_u' # or 'train_l'
 
     if mode == 'train_l':
-        img_path = "E:/AMOS-Lab/AMOS22/labeled/images" # AMOS
-        mask_path = "E:/AMOS-Lab/AMOS22/labeled/labels" # AMOS
-        pathtoimg = "E:/AMOS-Lab/AMOS22/labeled_preprocess/images" # AMOS
-        pathtomask = "E:/AMOS-Lab/AMOS22/labeled_preprocess/labels" # AMOS
+        # img_path = 'E:/FLARE-Lab/FLARE25/imagesTr' # flare
+        # mask_path = 'E:/FLARE-Lab/FLARE25/labelsTr' # flare
+        img_path = "E:/AbdomenCT-1K/Image" # AK
+        mask_path = "E:/AbdomenCT-1K/Mask" # AK
+        # pathtoimg = 'E:/FLARE-Lab/FLARE25/images_preprocess2' # flare
+        # pathtomask = 'E:/FLARE-Lab/FLARE25/labels_preprocess2' # flare
+        pathtoimg = 'E:/AbdomenCT-1K/test1/imgs' # AK
+        pathtomask = 'E:/AbdomenCT-1K/test1/labels' # AK
         niiimgnames = sorted(os.listdir(img_path))
         niimasknames = sorted(os.listdir(mask_path))
     elif mode == 'train_u':
-        # img_path = 'E:/AMOS-Lab/AMOS22/unlabeled/' # AMOS old
-        img_path = 'E:/AMOS-Lab/AMOS22/unlabeled_new/' # AMOS new10
-        pathtoimg = "E:\AMOS-Lab\AMOS22_unlabeled_new" # AMOS
+        img_path = "E:/FLARE-Lab/FLARE22/FLARE22_UnlabeledCase0-500" # flare
+        # img_path = 'E:/AbdomenCT-1K/unlabeled' # AK
+        pathtoimg = 'E:/FLARE-Lab/FLARE25/unlabeled_preprocess_26_all' # FLARE
+        # pathtoimg = 'E:/AbdomenCT-1K/unlabeled_preprocess' # AK
         niiimgnames = sorted(os.listdir(img_path))
 
     os.makedirs(pathtoimg, exist_ok=True)
@@ -97,12 +46,12 @@ def main():
         target_mask_path = None
         if mode == 'train_l':
             niimaskname = niimasknames[sample_idx]
-            maskfilepath = os.path.join(mask_path, niimaskname)
             target_mask_path = os.path.join(pathtomask, niimaskname)
             print(f"{'='*15} Processing img-{niiimgname}, mask-{niimaskname} {'='*15}")
-            if niiimgname != niimaskname:
+            if niiimgname.split('_0000.nii.gz')[0] != niimaskname.split('.')[0]:
                 print(f"This itertion is not match for img and mask....")
-                break
+                continue
+            maskfilepath = os.path.join(mask_path, niimaskname)
         else:
             print(f"{'='*15} Processing img-{niiimgname} {'='*15}")
 
@@ -126,13 +75,6 @@ def main():
                 remove_file_if_exists(target_img_path)
                 remove_file_if_exists(target_mask_path)
 
-        if Path(imgfilepath).stat().st_size == 0:
-            append_error_log(error_log_path, niiimgname, f"     ImageIO reader file: {niiimgname}")
-            continue
-        if mode == 'train_l' and Path(maskfilepath).stat().st_size == 0:
-            append_error_log(error_log_path, niimaskname, f"     Label reader file: {niimaskname}")
-            continue
-
         img_sitk  = sitk.ReadImage(imgfilepath,  sitk.sitkFloat32)           # Reading CT
         img_sitk = sitk.DICOMOrient(img_sitk, 'RAS')
         image     = sitk.GetArrayFromImage(img_sitk).astype(np.float32)      # Converting sitk_metadata to image Array
@@ -140,10 +82,7 @@ def main():
             mask_sitk = sitk.ReadImage(maskfilepath, sitk.sitkInt32)         # Reading CT
             mask_sitk = sitk.DICOMOrient(mask_sitk, 'RAS')
             mask      = sitk.GetArrayFromImage(mask_sitk).astype(np.float32) # Converting sitk_metadata to image Array
-        
-        if len(img_sitk.GetDirection()) != 9:
-            append_error_log(error_log_path, niiimgname, f"    direction len is: {len(img_sitk.GetDirection())}")
-            continue
+
         # normalise image， intensity clipping to [-40, 325]
         np_img = np.clip(image, -40., 325.).astype(np.float32)
 
@@ -161,9 +100,9 @@ def main():
         cureImage(img_final, img_sitk)
 
         ### 2. set up spacing
-        outspacing = [1.254798173904419, 1.254798173904419, 2.5] # flare22 and AK and AMOS22
-        img_outsize, mask_outsize = [0, 0, 0], [0, 0, 0]
-        img_spacing, imgsize  = img_final.GetSpacing(), img_final.GetSize()
+        outspacing = [1.254798173904419, 1.254798173904419, 2.5] # flare and AK
+        img_outsize , mask_outsize = [0, 0, 0], [0, 0, 0]
+        img_spacing , imgsize  = img_final.GetSpacing(), img_final.GetSize()
 
         img_outsize[0] = round(imgsize[0] * img_spacing[0] / outspacing[0])
         img_outsize[1] = round(imgsize[1] * img_spacing[1] / outspacing[1])

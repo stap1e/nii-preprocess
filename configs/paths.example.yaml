@@ -1,0 +1,31 @@
+# Copy to paths.local.yaml and adjust paths for your machine.
+# Scripts still embed Windows paths in many places; migrate them here over time.
+
+flare:
+  labeled:
+    images: "E:/FLARE-Lab/FLARE25/imagesTr"
+    labels: "E:/FLARE-Lab/FLARE25/labelsTr"
+    h5_out: "E:/FLARE-Lab/FLARE25/labeled_h5"
+  unlabeled:
+    images: "E:/FLARE-Lab/FLARE22/FLARE22_UnlabeledCase0-500"
+    preprocess_out: "E:/FLARE-Lab/FLARE25/unlabeled_preprocess"
+    h5_out: "E:/FLARE-Lab/FLARE25/unlabeled_h5"
+  splits_dir: "E:/FLARE-Lab/FLARE25/latest-txt"
+
+amos:
+  labeled:
+    images: "E:/AMOS-Lab/AMOS22/labeled_preprocess/images"
+    labels: "E:/AMOS-Lab/AMOS22/labeled_preprocess/labels"
+    h5_out: "E:/AMOS-Lab/AMOS22/labeled_h5"
+  splits_dir: "E:/AMOS-Lab/amos22_labeled"
+
+abdomen_ct:
+  images: "E:/AbdomenCT-1K/Image"
+  masks: "E:/AbdomenCT-1K/Mask"
+  h5_out: "E:/AbdomenCT-1K/test2/labeled_h5"
+  splits_dir: "E:/AbdomenCT-1K/test2"
+
+synapse:
+  images: "D:/data/Synapse_preprocessed/img"
+  labels: "D:/data/Synapse_preprocessed/label"
+  h5_out: "D:/data/Synapse_preprocessed/h5"
