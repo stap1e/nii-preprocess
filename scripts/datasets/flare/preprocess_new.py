@@ -10,7 +10,9 @@ from med_preprocess.io.nii_io import _build_temp_output_path, remove_file_if_exi
 
 
 DEFAULT_IMAGE_DIR = r"E:/FLARE25/validation/Validation-Public-Images"
+DEFAULT_MASK_DIR = ""
 DEFAULT_OUTPUT_DIR = r"E:/FLARE25/test/nii_val_img_6"
+DEFAULT_MASK_OUTPUT_DIR = r"E:/FLARE25/test/nii_val_mask_6"
 DEFAULT_SPACING = (1.254798173904419, 1.254798173904419, 2.5)
 CLIP_RANGE = (-40.0, 325.0)
 TARGET_AXCODES = ("R", "A", "S")
@@ -26,7 +28,9 @@ def parse_spacing(value: str) -> tuple[float, float, float]:
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--image-dir", default=DEFAULT_IMAGE_DIR)
+    parser.add_argument("--mask-dir", default=DEFAULT_MASK_DIR)
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument("--mask-output-dir", default=DEFAULT_MASK_OUTPUT_DIR)
     parser.add_argument("--spacing", type=parse_spacing, default=DEFAULT_SPACING)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--limit", type=int, default=0)
@@ -39,6 +43,27 @@ def list_nii_files(directory: Path) -> list[Path]:
         for path in directory.iterdir()
         if path.name.endswith(".nii") or path.name.endswith(".nii.gz")
     )
+
+
+def nii_case_id(path: Path) -> str:
+    name = path.name
+    if name.endswith(".nii.gz"):
+        name = name[:-7]
+    elif name.endswith(".nii"):
+        name = name[:-4]
+    if name.endswith("_0000"):
+        name = name[:-5]
+    return name
+
+
+def build_mask_lookup(mask_files: list[Path]) -> dict[str, Path]:
+    lookup = {}
+    for mask_path in mask_files:
+        case_id = nii_case_id(mask_path)
+        if case_id in lookup:
+            raise RuntimeError(f"duplicate mask case id {case_id}: {lookup[case_id].name}, {mask_path.name}")
+        lookup[case_id] = mask_path
+    return lookup
 
 
 def normalize_to_unit_range(data: np.ndarray) -> np.ndarray:
@@ -66,21 +91,22 @@ def resample_to_spacing(
     data: np.ndarray,
     in_spacing: tuple[float, float, float],
     out_spacing: tuple[float, float, float],
+    order: int,
 ) -> np.ndarray:
     out_shape = tuple(
         max(1, int(round(size * src / dst)))
         for size, src, dst in zip(data.shape, in_spacing, out_spacing)
     )
     if out_shape == data.shape:
-        return data.astype(np.float32, copy=False)
+        return data
     return resize(
         data,
         output_shape=out_shape,
-        order=3,
+        order=order,
         mode="edge",
         anti_aliasing=False,
         preserve_range=True,
-    ).astype(np.float32, copy=False)
+    )
 
 
 def resample_affine(
@@ -101,12 +127,14 @@ def save_nifti(
     affine: np.ndarray,
     output_path: Path,
     spacing: tuple[float, float, float],
+    dtype: np.dtype,
 ) -> None:
-    image = nib.Nifti1Image(data.astype(np.float32, copy=False), affine)
+    data = data.astype(dtype, copy=False)
+    image = nib.Nifti1Image(data, affine)
     image.set_qform(affine, code=1)
     image.set_sform(affine, code=1)
     image.header.set_zooms(spacing)
-    image.header.set_data_dtype(np.float32)
+    image.header.set_data_dtype(dtype)
     temp_path = Path(_build_temp_output_path(str(output_path)))
     remove_file_if_exists(str(temp_path))
     try:
@@ -117,11 +145,7 @@ def save_nifti(
         raise
 
 
-def preprocess_one(
-    input_path: Path,
-    output_path: Path,
-    out_spacing: tuple[float, float, float],
-) -> None:
+def load_canonical_data(input_path: Path) -> tuple[np.ndarray, np.ndarray, tuple[float, float, float]]:
     image = nib.as_closest_canonical(nib.load(str(input_path)))
     if nib.aff2axcodes(image.affine) != TARGET_AXCODES:
         raise RuntimeError(f"failed to orient {input_path.name} to RAS")
@@ -130,44 +154,132 @@ def preprocess_one(
         data = data[..., 0]
     if data.ndim != 3:
         raise RuntimeError(f"expected 3D image, got shape {data.shape} for {input_path.name}")
-    in_spacing = tuple(float(value) for value in nib.affines.voxel_sizes(image.affine))
-    data = normalize_to_unit_range(data)
-    data = resample_to_spacing(data, in_spacing, out_spacing)
-    affine = resample_affine(image.affine, in_spacing, out_spacing)
-    save_nifti(data, affine, output_path, out_spacing)
+    spacing = tuple(float(value) for value in nib.affines.voxel_sizes(image.affine))
+    return data, image.affine, spacing
+
+
+def validate_saved(
+    output_path: Path,
+    spacing: tuple[float, float, float],
+    dtype_name: str,
+) -> None:
     saved = nib.load(str(output_path))
     if nib.aff2axcodes(saved.affine) != TARGET_AXCODES:
         raise RuntimeError(f"saved orientation is not RAS for {output_path.name}")
     zooms = tuple(round(float(value), 4) for value in saved.header.get_zooms()[:3])
-    expected = tuple(round(float(value), 4) for value in out_spacing)
+    expected = tuple(round(float(value), 4) for value in spacing)
     if zooms != expected:
         raise RuntimeError(f"saved spacing {zooms} != {expected} for {output_path.name}")
-    if str(saved.get_data_dtype()) != "float32":
-        raise RuntimeError(f"saved dtype is not float32 for {output_path.name}")
+    if str(saved.get_data_dtype()) != dtype_name:
+        raise RuntimeError(f"saved dtype is not {dtype_name} for {output_path.name}")
+
+
+def preprocess_image(
+    input_path: Path,
+    output_path: Path,
+    out_spacing: tuple[float, float, float],
+) -> None:
+    data, affine, in_spacing = load_canonical_data(input_path)
+    data = normalize_to_unit_range(data)
+    data = resample_to_spacing(data, in_spacing, out_spacing, order=3).astype(np.float32, copy=False)
+    affine = resample_affine(affine, in_spacing, out_spacing)
+    save_nifti(data, affine, output_path, out_spacing, np.float32)
+    validate_saved(output_path, out_spacing, "float32")
+
+
+def preprocess_mask(
+    input_path: Path,
+    output_path: Path,
+    out_spacing: tuple[float, float, float],
+) -> None:
+    data, affine, in_spacing = load_canonical_data(input_path)
+    data = np.nan_to_num(data, nan=0.0, posinf=0.0, neginf=0.0)
+    data = resample_to_spacing(data, in_spacing, out_spacing, order=0)
+    data = np.rint(data).astype(np.int32, copy=False)
+    affine = resample_affine(affine, in_spacing, out_spacing)
+    save_nifti(data, affine, output_path, out_spacing, np.int32)
+    validate_saved(output_path, out_spacing, "int32")
+
+
+def cleanup_temp(*paths: Path | None) -> None:
+    for path in paths:
+        if path is not None:
+            remove_file_if_exists(_build_temp_output_path(str(path)))
+
+
+def remove_outputs(*paths: Path | None) -> None:
+    for path in paths:
+        if path is not None:
+            remove_file_if_exists(str(path))
+
+
+def should_skip(
+    image_output_path: Path,
+    mask_output_path: Path | None,
+    overwrite: bool,
+) -> bool:
+    if overwrite:
+        return False
+    image_exists = image_output_path.exists()
+    if mask_output_path is None:
+        return image_exists
+    mask_exists = mask_output_path.exists()
+    if image_exists and mask_exists:
+        return True
+    if image_exists != mask_exists:
+        print("found partial output, regenerating current sample")
+        remove_outputs(image_output_path, mask_output_path)
+    return False
 
 
 def main() -> None:
     args = parse_args()
     image_dir = Path(args.image_dir)
+    mask_dir = Path(args.mask_dir) if str(args.mask_dir).strip() else None
     output_dir = Path(args.output_dir)
+    mask_output_dir = Path(args.mask_output_dir) if mask_dir is not None else None
     output_dir.mkdir(parents=True, exist_ok=True)
-    files = list_nii_files(image_dir)
+    if mask_output_dir is not None:
+        mask_output_dir.mkdir(parents=True, exist_ok=True)
+    image_files = list_nii_files(image_dir)
     if args.limit > 0:
-        files = files[:args.limit]
-    total = len(files)
+        image_files = image_files[:args.limit]
+    mask_lookup = build_mask_lookup(list_nii_files(mask_dir)) if mask_dir is not None else {}
+    mode = "labeled" if mask_dir is not None else "unlabeled"
+    total = len(image_files)
     processed = 0
     skipped = 0
-    for index, input_path in enumerate(files, start=1):
-        output_path = output_dir / input_path.name
-        remove_file_if_exists(_build_temp_output_path(str(output_path)))
-        if output_path.exists() and not args.overwrite:
+    print(f"mode={mode}, total={total}")
+    for index, image_path in enumerate(image_files, start=1):
+        image_output_path = output_dir / image_path.name
+        mask_path = None
+        mask_output_path = None
+        if mask_output_dir is not None:
+            case_id = nii_case_id(image_path)
+            mask_path = mask_lookup.get(case_id)
+            if mask_path is None:
+                raise RuntimeError(f"missing mask for {image_path.name}, case id {case_id}")
+            mask_output_path = mask_output_dir / mask_path.name
+        cleanup_temp(image_output_path, mask_output_path)
+        if should_skip(image_output_path, mask_output_path, args.overwrite):
             skipped += 1
-            print(f"[{index}/{total}] skip existing {input_path.name}")
+            print(f"[{index}/{total}] skip existing {image_path.name}")
             continue
-        print(f"[{index}/{total}] process {input_path.name}")
-        preprocess_one(input_path, output_path, args.spacing)
+        if mask_path is None:
+            print(f"[{index}/{total}] process unlabeled image {image_path.name}")
+            preprocess_image(image_path, image_output_path, args.spacing)
+        else:
+            print(f"[{index}/{total}] process image {image_path.name}, mask {mask_path.name}")
+            try:
+                preprocess_mask(mask_path, mask_output_path, args.spacing)
+                preprocess_image(image_path, image_output_path, args.spacing)
+            except Exception:
+                remove_outputs(image_output_path, mask_output_path)
+                raise
         processed += 1
-    print(f"done: processed={processed}, skipped={skipped}, total={total}, output={output_dir}")
+    print(f"done: mode={mode}, processed={processed}, skipped={skipped}, total={total}, output={output_dir}")
+    if mask_output_dir is not None:
+        print(f"mask_output={mask_output_dir}")
 
 
 if __name__ == "__main__":
