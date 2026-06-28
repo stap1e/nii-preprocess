@@ -32,17 +32,17 @@ def safe_write_image(image, final_path):
 
 def main():
     index = 0
-    mode = 'train_u' # or 'train_l'
+    mode = 'train_l' # or 'train_l'  
 
     if mode == 'train_l':
         # img_path = 'E:/FLARE-Lab/FLARE25/imagesTr' # flare
         # mask_path = 'E:/FLARE-Lab/FLARE25/labelsTr' # flare
-        img_path = "E:/AbdomenCT-1K/Image" # AK
-        mask_path = "E:/AbdomenCT-1K/Mask" # AK
+        img_path = "F:/FLARE-Lab/FLARE25/imagesTr" # AK
+        mask_path = "F:/FLARE-Lab/FLARE25/labelsTr" # AK
         # pathtoimg = 'E:/FLARE-Lab/FLARE25/images_preprocess2' # flare
         # pathtomask = 'E:/FLARE-Lab/FLARE25/labels_preprocess2' # flare
-        pathtoimg = 'E:/AbdomenCT-1K/test1/imgs' # AK
-        pathtomask = 'E:/AbdomenCT-1K/test1/labels' # AK
+        pathtoimg = 'F:/FLARE-Lab/FLARE25/test6/imgs' # AK
+        pathtomask = 'F:/FLARE-Lab/FLARE25/test6/labels' # AK
         niiimgnames = sorted(os.listdir(img_path))
         niimasknames = sorted(os.listdir(mask_path))
     elif mode == 'train_u':

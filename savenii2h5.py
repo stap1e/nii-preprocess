@@ -1,11 +1,11 @@
 import h5py, os
 import SimpleITK as sitk
 
-imgnii_path = 'E:/FLARE25/train_gt_label/img_val'
-masknii_path = 'E:/FLARE25/train_gt_label/mask_val'
+imgnii_path = 'F:/FLARE-Lab/FLARE25/test6/imgs'
+masknii_path = 'F:/FLARE-Lab/FLARE25/test6/labels'
 
 # imgnii_path = 'E:/FLARE25/train_gt_label/nii_val_results_l'
-h5_save_path = 'E:/FLARE25/train_gt_label/valh5'
+h5_save_path = 'F:/FLARE-Lab/FLARE25/test6/train_l_h5'
 # h5_read_path = 'E:/FLARE25/train_gt_label/labeled_onlyh5'
 os.makedirs(h5_save_path, exist_ok=True)
 
